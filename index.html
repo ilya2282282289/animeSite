@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>АниЛибрия — Релизы и рекомендации</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <h1><i class="fas fa-play-circle"></i>AnimeLook</h1>
+      <div class="search">
+        <input type="text" id="searchInput" placeholder="Поиск аниме...">
+        <button id="searchBtn"><i class="fas fa-search"></i></button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      
+      <!-- Основная сетка с франшизами -->
+      <h2><i class="fas fa-fire"></i> Рекомендации</h2>
+      <div id="grid" class="grid"></div>
+      <!-- <p id="empty" class="empty">Загрузка...</p> -->
+
+      <!-- Кнопка "Больше франшиз" -->
+      <!-- <div style="text-align:center; margin:20px 0;">
+        <button id="moreFranchisesBtn" class="more-franchises-btn">
+          <i class="fas fa-arrow-down"></i> Больше франшиз
+        </button>
+      </div> -->
+
+      <!-- Детальная страница аниме -->
+      <div id="animeDetail" class="anime-detail" style="display:none;">
+        <button id="backBtn" class="back-btn"><i class="fas fa-arrow-left"></i> Назад к списку</button>
+        
+        <div class="anime-hero">
+          <div class="anime-poster">
+            <img id="detailPoster" src="" alt="Poster" />
+            <div class="anime-rating">
+              <i class="fas fa-star"></i>
+              <span id="detailRating">-</span>
+            </div>
+          </div>
+          
+          <div class="anime-info">
+            <h2 id="detailTitle"></h2>
+            <div class="anime-meta">
+              <span id="detailYear"></span>
+              <span id="detailStatus"></span>
+              <span id="detailEpisodes"></span>
+            </div>
+            <p id="detailDescription"></p>
+            
+            <div class="anime-tags">
+              <div id="detailGenres" class="tags"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="episodes-section">
+          <h3><i class="fas fa-play-circle"></i> Серии</h3>
+          <div id="episodeList" class="episode-list"></div>
+        </div>
+
+        <div id="player" class="player">
+          <div class="player-placeholder">
+            <i class="fas fa-play-circle"></i>
+            <p>Выберите серию для просмотра</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Рекомендации -->
+      <div class="recommendations">
+
+        <div class="recommendation-section">
+          <div class="section-header">
+            <h2><i class="fas fa-bell"></i> Новые релизы</h2>
+            <div class="scroll-controls">
+              <button class="scroll-btn left-btn"><i class="fas fa-chevron-left"></i></button>
+              <button class="scroll-btn right-btn"><i class="fas fa-chevron-right"></i></button>
+            </div>
+          </div>
+          <div id="releasesHorizontal" class="horizontal-scroll"></div>
+        </div>
+        
+        <div class="recommendation-section">
+          <h3><i class="fas fa-crown"></i> Популярные франшизы</h3>
+          <div id="recommendationsPopular" class="recommendation-grid"></div>
+        </div>
+        
+        <div class="recommendation-section">
+          <h3><i class="fas fa-chart-line"></i> Топ аниме</h3>
+          <div id="recommendationsTop" class="recommendation-grid"></div>
+        </div>
+        
+        <div class="recommendation-section">
+          <h3><i class="fas fa-calendar-alt"></i> Скоро выйдет</h3>
+          <div id="recommendationsUpcoming" class="recommendation-grid"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-content">
+      <p>&copy; 2023 АниЛибрия — Лучшая платформа для просмотра аниме</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
