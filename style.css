@@ -785,7 +785,7 @@ footer {
   border-radius: 10px;
   overflow: hidden;
   width: 100%;
-  max-width: 100%; /* чтобы не выходило за экран */
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -793,26 +793,29 @@ footer {
   display: block;
   width: 100% !important;
   height: auto !important;
-  max-height: 80vh; /* можно увеличить для мобильного, если нужно */
+  max-height: 80vh; /* ограничение для нормального отображения до fullscreen */
   background: #000;
-  object-fit: contain; /* чтобы видео масштабировалось правильно */
+  object-fit: contain;
 }
 
-/* Для маленьких экранов */
-@media (max-width: 768px) {
-  .video-wrapper {
-    max-height: 90vh;
-  }
-  .controls {
-    flex-wrap: wrap;
-    gap: 5px;
-  }
-  .controls .volume {
-    width: 70px;
-  }
+/* Fullscreen для всех браузеров */
+.video-wrapper:fullscreen,
+.video-wrapper:-webkit-full-screen {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  border-radius: 0 !important;
 }
 
+.video-wrapper:fullscreen video,
+.video-wrapper:-webkit-full-screen video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+}
 
+/* Контролы видео */
 .controls {
   display: flex;
   align-items: center;
@@ -820,6 +823,8 @@ footer {
   padding: 8px 10px;
   background: rgba(20,20,20,.9);
   border-top: 1px solid rgba(255,255,255,.05);
+  flex-wrap: wrap;
+  box-sizing: border-box;
 }
 
 .controls .btn {
@@ -845,6 +850,7 @@ footer {
   text-align: center;
 }
 
+/* Меню настроек */
 .menu {
   position: relative;
 }
@@ -889,4 +895,22 @@ footer {
 .menu-btn.active {
   border-color: #4da3ff;
   background: rgba(77,163,255,.15);
+}
+
+/* Для маленьких экранов */
+@media (max-width: 768px) {
+  .video-wrapper {
+    max-height: 90vh;
+  }
+  .controls {
+    gap: 5px;
+  }
+  .controls .volume {
+    width: 70px;
+  }
+}
+
+/* iOS Safari workaround */
+video::-webkit-media-controls {
+  display: none !important;
 }
