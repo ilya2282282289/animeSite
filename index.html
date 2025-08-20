@@ -72,6 +72,18 @@
             <i class="fas fa-play-circle"></i>
             <p>Выберите серию для просмотра</p>
           </div>
+          <!-- overlay для контролов -->
+          <div class="player-overlay" id="playerOverlay">
+            <div class="player-controls">
+              <button id="settingsBtn"><i class="fas fa-ellipsis-v"></i></button>
+              <div class="settings-menu" id="settingsMenu">
+                <p>Качество</p>
+                <button class="quality-btn" data-quality="1080">1080p</button>
+                <button class="quality-btn" data-quality="720">720p</button>
+                <button class="quality-btn" data-quality="480">480p</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
