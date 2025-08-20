@@ -662,12 +662,21 @@ function playEpisode(ep) {
 
   btnFs.addEventListener("click", () => {
     const wrap = container.querySelector(".video-wrapper");
-    if (!document.fullscreenElement) {
-      wrap.requestFullscreen?.();
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      if (wrap.requestFullscreen) {
+        wrap.requestFullscreen();
+      } else if (wrap.webkitRequestFullscreen) { // Safari iOS
+        wrap.webkitRequestFullscreen();
+      }
     } else {
-      document.exitFullscreen?.();
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) { // Safari iOS
+        document.webkitExitFullscreen();
+      }
     }
   });
+  
 
   // Открытие/закрытие меню ⋮
   btnSettings.addEventListener("click", (e) => {
