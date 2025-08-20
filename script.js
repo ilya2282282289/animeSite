@@ -463,7 +463,6 @@ function playEpisode(ep) {
     hlsInstance = null;
   }
 
-  // Собираем доступные качества
   const sources = [];
   if (ep.hls_480) sources.push({ label: "480p", url: ep.hls_480 });
   if (ep.hls_720) sources.push({ label: "720p", url: ep.hls_720 });
@@ -479,22 +478,16 @@ function playEpisode(ep) {
     return;
   }
 
-  // Рисуем плеер
   container.innerHTML = `
     <div class="video-wrapper">
       <video id="video" playsinline></video>
 
       <div class="controls">
         <button class="btn btn-play" title="Play/Pause"><i class="fas fa-play"></i></button>
-
         <input class="seek" type="range" min="0" max="100" step="0.1" value="0" title="Перемотка">
-
         <span class="time">00:00 / 00:00</span>
-
         <input class="volume" type="range" min="0" max="1" step="0.01" value="1" title="Громкость">
-
         <button class="btn btn-pip" title="Картинка в картинке"><i class="fas fa-clone"></i></button>
-
         <div class="menu">
           <button class="btn btn-settings" title="Настройки"><i class="fas fa-ellipsis-v"></i></button>
           <div class="menu-panel">
@@ -508,7 +501,6 @@ function playEpisode(ep) {
             </div>
           </div>
         </div>
-
         <button class="btn btn-fullscreen" title="На весь экран"><i class="fas fa-expand"></i></button>
       </div>
     </div>
@@ -525,8 +517,10 @@ function playEpisode(ep) {
   const panel = container.querySelector(".menu-panel");
   const qWrap = container.querySelector(".menu-quality");
   const sWrap = container.querySelector(".menu-speed");
+  const wrapper = container.querySelector(".video-wrapper");
 
-  // helpers
+  let hideControlsTimeout;
+
   function formatTime(sec) {
     sec = Math.max(sec || 0, 0);
     const h = Math.floor(sec / 3600);
@@ -544,7 +538,6 @@ function playEpisode(ep) {
   }
 
   function setSource(url, resumeTime=0, shouldPlay=true) {
-    // Сохраняем текущую скорость и громкость
     const rate = video.playbackRate;
     const vol = video.volume;
 
@@ -582,7 +575,7 @@ function playEpisode(ep) {
     }
   }
 
-  // Качества — строим кнопки
+  // Качества
   qWrap.innerHTML = "";
   sources.forEach((src, idx) => {
     const b = document.createElement("button");
@@ -599,7 +592,7 @@ function playEpisode(ep) {
     qWrap.appendChild(b);
   });
 
-  // Скорости — строим кнопки
+  // Скорости
   [0.5, 0.75, 1, 1.25, 1.5, 2].forEach(sp => {
     const b = document.createElement("button");
     b.className = "menu-btn" + (sp === 1 ? " active" : "");
@@ -613,19 +606,25 @@ function playEpisode(ep) {
     sWrap.appendChild(b);
   });
 
-  // Первый запуск — первая дорожка
+  // Первый запуск
   setSource(sources[0].url, 0, true);
 
+  // -------------------
   // UI события
   btnPlay.addEventListener("click", () => {
-    if (video.paused) {
-      video.play().catch(()=>{});
-    } else {
-      video.pause();
-    }
+    if (video.paused) video.play().catch(()=>{});
+    else video.pause();
   });
-  video.addEventListener("play", () => btnPlay.innerHTML = `<i class="fas fa-pause"></i>`);
-  video.addEventListener("pause", () => btnPlay.innerHTML = `<i class="fas fa-play"></i>`);
+
+  video.addEventListener("play", () => {
+    btnPlay.innerHTML = `<i class="fas fa-pause"></i>`;
+    if (document.fullscreenElement) showControlsTemporarily();
+  });
+
+  video.addEventListener("pause", () => {
+    btnPlay.innerHTML = `<i class="fas fa-play"></i>`;
+    if (document.fullscreenElement) showControls();
+  });
 
   video.addEventListener("timeupdate", updateTimeUI);
   video.addEventListener("loadedmetadata", updateTimeUI);
@@ -636,69 +635,74 @@ function playEpisode(ep) {
     video.currentTime = (seek.value / 100) * video.duration;
   });
 
-  volume.addEventListener("input", () => {
-    video.volume = volume.value;
-  });
+  volume.addEventListener("input", () => video.volume = volume.value);
 
-  // Клик по видео = play/pause
   video.addEventListener("click", () => {
-    if (video.paused) {
-      video.play().catch(()=>{});
-    } else {
-      video.pause();
-    }
+    if (video.paused) video.play().catch(()=>{});
+    else video.pause();
   });
-
 
   btnPip.addEventListener("click", async () => {
     try {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture();
-      } else if (document.pictureInPictureEnabled) {
-        await video.requestPictureInPicture();
-      }
-    } catch(e) {}
+      if (document.pictureInPictureElement) await document.exitPictureInPicture();
+      else if (document.pictureInPictureEnabled) await video.requestPictureInPicture();
+    } catch(e){}
   });
 
   btnFs.addEventListener("click", () => {
-    const wrap = container.querySelector(".video-wrapper");
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-      if (wrap.requestFullscreen) {
-        wrap.requestFullscreen();
-      } else if (wrap.webkitRequestFullscreen) { // Safari iOS
-        wrap.webkitRequestFullscreen();
-      }
+    const video = container.querySelector("#video");
+    if (!document.fullscreenElement) {
+      if (video.requestFullscreen) video.requestFullscreen();
+      else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen(); // Safari
     } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      } else if (document.webkitExitFullscreen) { // Safari iOS
-        document.webkitExitFullscreen();
-      }
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen(); // Safari
     }
   });
   
 
-  // Открытие/закрытие меню ⋮
-  btnSettings.addEventListener("click", (e) => {
+  btnSettings.addEventListener("click", e => {
     e.stopPropagation();
     panel.classList.toggle("open");
   });
   document.addEventListener("click", () => panel.classList.remove("open"));
 
-  // 2× при удержании у краёв (как просили)
+  // 2× скорость при удержании краёв
   video.addEventListener("touchstart", (e) => {
     const rect = video.getBoundingClientRect();
     const x = e.touches[0].clientX - rect.left;
-    if (x < rect.width * 0.2 || x > rect.width * 0.8) {
-      video.playbackRate = 2.0;
-    }
+    if (x < rect.width*0.2 || x > rect.width*0.8) video.playbackRate = 2.0;
   });
   video.addEventListener("touchend", () => {
-    // возвращаем ту скорость, что выбрали в меню (берём активную)
     const active = sWrap.querySelector(".menu-btn.active");
     const val = active ? parseFloat(active.textContent) : 1;
     video.playbackRate = val || 1;
   });
+
+  // -------------------
+  // Контролы показываются/скрываются только в fullscreen
+  function showControls() {
+    wrapper.classList.add("show-controls");
+    clearTimeout(hideControlsTimeout);
+  }
+
+  function showControlsTemporarily() {
+    wrapper.classList.add("show-controls");
+    clearTimeout(hideControlsTimeout);
+    hideControlsTimeout = setTimeout(() => {
+      // скрываем только если плеер в fullscreen
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        wrapper.classList.remove("show-controls");
+      }
+    }, 5000);
+  }
+  
+
+  wrapper.addEventListener("mousemove", showControlsTemporarily);
+  wrapper.addEventListener("click", showControlsTemporarily);
+
+  // Панель видна по умолчанию
+  wrapper.classList.add("show-controls");
 }
 
 // --- Франшизы ---
@@ -929,6 +933,8 @@ function renderRecommendationGrid(list, container) {
     card.addEventListener('click', () => openAnimeDetail(item.id || item.alias));
   });
 }
+
+
 
 // Обновляем инициализацию для загрузки всех рекомендаций
 window.addEventListener('DOMContentLoaded', () => {
