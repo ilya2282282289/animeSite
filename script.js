@@ -650,15 +650,25 @@ function playEpisode(ep) {
   });
 
   btnFs.addEventListener("click", () => {
-    const video = container.querySelector("#video");
     if (!document.fullscreenElement) {
-      if (video.requestFullscreen) video.requestFullscreen();
-      else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen(); // Safari
+      if (video.requestFullscreen) {
+        video.requestFullscreen();
+      } else if (video.webkitRequestFullscreen) { // Safari iOS
+        video.webkitRequestFullscreen();
+      } else if (video.msRequestFullscreen) { // старый IE
+        video.msRequestFullscreen();
+      }
     } else {
-      if (document.exitFullscreen) document.exitFullscreen();
-      else if (document.webkitExitFullscreen) document.webkitExitFullscreen(); // Safari
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) { // Safari
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
     }
   });
+  
   
 
   btnSettings.addEventListener("click", e => {
