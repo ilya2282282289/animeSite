@@ -650,22 +650,14 @@ function playEpisode(ep) {
   });
 
   btnFs.addEventListener("click", () => {
-    if (!document.fullscreenElement) {
-      if (video.requestFullscreen) {
-        video.requestFullscreen();
-      } else if (video.webkitRequestFullscreen) { // Safari iOS
-        video.webkitRequestFullscreen();
-      } else if (video.msRequestFullscreen) { // старый IE
-        video.msRequestFullscreen();
-      }
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      } else if (document.webkitExitFullscreen) { // Safari
-        document.webkitExitFullscreen();
-      } else if (document.msExitFullscreen) {
-        document.msExitFullscreen();
-      }
+    if (video.webkitEnterFullscreen) { 
+      // iPhone / iPad Safari
+      video.webkitEnterFullscreen();
+    } else if (video.requestFullscreen) {
+      // ПК + Android Chrome
+      video.requestFullscreen();
+    } else if (video.msRequestFullscreen) {
+      video.msRequestFullscreen();
     }
   });
   
