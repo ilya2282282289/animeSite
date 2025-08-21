@@ -19,13 +19,21 @@ const episodeList = document.getElementById("episodeList");
 const playerContainer = document.getElementById("player");
 const recommendationsPopular = document.getElementById("recommendationsPopular");
 const releasesHorizontal = document.getElementById("releasesHorizontal");
+const logo = document.querySelector('header h1');
+
+// ---- state vars (добавьте рядом с hlsInstance) ----
+let currentMode = 'main'; // 'main' | 'search' | 'detail'
+let lastSearchQuery = '';
+let lastSearchResults = [];
+let lastViewBeforeDetail = 'main';
+
 
 let franchisePage = 1;
 let loadingFranchises = false;
 
 let hlsInstance = null;
 
-// Настройки качества
+// Settings (quality menu on detail view)
 const settingsBtn = document.getElementById("settingsBtn");
 const settingsMenu = document.getElementById("settingsMenu");
 
@@ -35,145 +43,87 @@ if (settingsBtn) {
   });
 }
 
-// Переключение качества (пример: меняем src)
 document.querySelectorAll(".quality-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     const quality = btn.dataset.quality;
     console.log("Выбрано качество:", quality);
-    settingsMenu.style.display = "none";
-    // здесь вставь смену источника HLS под нужное качество
+    if (settingsMenu) settingsMenu.style.display = "none";
+    // при желании — здесь менять источник
   });
 });
 
-// Ускорение воспроизведения при удержании пальца у края
-const player = document.querySelector("#player video");
-
-if (player) {
-  let speedInterval = null;
-
-  player.parentElement.addEventListener("touchstart", (e) => {
-    const touchX = e.touches[0].clientX;
-    const screenWidth = window.innerWidth;
-
-    if (touchX < screenWidth * 0.2 || touchX > screenWidth * 0.8) {
-      // если палец у левого или правого края
-      player.playbackRate = 2.0;
-    }
-  });
-
-  player.parentElement.addEventListener("touchend", () => {
-    player.playbackRate = 1.0;
-  });
-}
-
-// Initialize
-window.addEventListener('DOMContentLoaded', () => {
-  loadReleases(); // Загружаем франшизы в основную сетку (40 элементов)
-  loadHorizontalReleases(); // Загружаем релизы для горизонтального скролла (15 элементов)
-  // loadFranchises(); // Загружаем популярные франшизы
-  setupEventListeners();
-  setupScrollHeader();
-  setupHorizontalScroll();
-});
-
-async function loadAllFranchises() {
-  if (loadingFranchises) return;
-  loadingFranchises = true;
-
-  let res = await fetch(`${API_BASE}/franchises?page=${franchisePage}&limit=20`);
-  let data = await res.json();
-
-  if (franchisePage === 1) franchisesPage.innerHTML = "";
-
-  data.list.forEach(fr => {
-      let div = document.createElement("div");
-      div.className = "franchise-card";
-      div.textContent = fr.name;
-      div.onclick = () => openFranchise(fr.id);
-      franchisesPage.appendChild(div);
-  });
-
-  franchisePage++;
-  loadingFranchises = false;
-}
-
-// следим за скроллом
-// franchisesPage.addEventListener("scroll", () => {
-//   if (franchisesPage.scrollTop + franchisesPage.clientHeight >= franchisesPage.scrollHeight - 50) {
-//       loadAllFranchises();
-//   }
-// });
-
-
-// при нажатии "Больше франшиз"
-// document.getElementById("moreFranchisesBtn").addEventListener("click", () => {
-// document.getElementById("mainContent").style.display = "none";
-// document.getElementById("franchisesPage").style.display = "block";
-// franchisesPage.innerHTML = `<div class="loading">Загрузка...</div>`;
-// loadAllFranchises();
-// });
-
-// кнопка "Назад"
-document.getElementById("backBtn").addEventListener("click", () => {
-document.getElementById("franchisesPage").style.display = "none";
-document.getElementById("mainContent").style.display = "block";
-});
-
-
-// Настройка горизонтального скролла
-function setupHorizontalScroll() {
-  const leftBtn = document.querySelector('.left-btn');
-  const rightBtn = document.querySelector('.right-btn');
-  const scrollContainer = document.querySelector('.horizontal-scroll');
-  
-  if (leftBtn && rightBtn && scrollContainer) {
-    leftBtn.addEventListener('click', () => {
-      scrollContainer.scrollBy({ left: -300, behavior: 'smooth' });
-    });
-    
-    rightBtn.addEventListener('click', () => {
-      scrollContainer.scrollBy({ left: 300, behavior: 'smooth' });
-    });
+// Helper: переключитель режима поиска (скрывает/показывает секции recommendations)
+function setSearchMode(on) {
+  const recWrap = document.querySelector('.recommendations');
+  const mainH2 = document.querySelector('.container > h2'); // заголовок "Рекомендации"
+  if (recWrap) recWrap.style.display = on ? 'none' : '';
+  if (mainH2) mainH2.style.display = on ? 'none' : '';
+  // если выходим из режима поиска — снимем все inline display:none с секций
+  if (!on) {
+    document.querySelectorAll('.recommendation-section').forEach(s => s.style.display = '');
   }
 }
 
-// Setup event listeners
-function setupEventListeners() {
-  searchBtn.addEventListener('click', () => searchAnime(searchInput.value));
-  searchInput.addEventListener('keypress', e => {
-    if (e.key === 'Enter') searchAnime(searchInput.value);
-  });
-  backBtn.addEventListener('click', goBackToList);
+// Полная реставрация главной страницы + повторная загрузка секций
+function showHome() {
+  // Скрываем детальную, показываем грид
+  if (animeDetail) animeDetail.style.display = "none";
+  if (grid) grid.style.display = "grid";
+
+  // Снимаем режим поиска (покажем все секции)
+  setSearchMode(false);
+
+  // Сбрасываем пустой текст
+  if (empty) { empty.style.display = "none"; empty.textContent = ""; }
+
+  // Уничтожаем HLS если есть
+  if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+
+  // Перезагружаем содержимое главной
+  loadReleases();
+  loadHorizontalReleases();
+  // loadFranchises();
+  loadTopAnime();
+  loadUpcomingAnime();
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// Header scroll effect
+// Инициализация событий
+function setupEventListeners() {
+  if (searchBtn) searchBtn.addEventListener('click', () => searchAnime(searchInput.value));
+  if (searchInput) {
+    searchInput.addEventListener('keypress', e => { if (e.key === 'Enter') searchAnime(searchInput.value); });
+    // При очистке поля — возвращаем главную
+    searchInput.addEventListener('input', () => {
+      if (searchInput.value.trim() === '') showHome();
+    });
+  }
+  if (backBtn) backBtn.addEventListener('click', goBackToList);
+}
+
 function setupScrollHeader() {
   const header = document.querySelector('header');
+  if (!header) return;
   window.addEventListener('scroll', () => {
-    if (window.scrollY > 50) {
-      header.classList.add('scrolled');
-    } else {
-      header.classList.remove('scrolled');
-    }
+    if (window.scrollY > 50) header.classList.add('scrolled');
+    else header.classList.remove('scrolled');
   });
 }
 
-// --- Загрузка франшиз (40 элементов) ---
+/* ----------------- Загрузка и рендер ----------------- */
+
 async function loadReleases() {
   try {
     const res = await fetch(`${API_BASE}/anime/franchises/random?limit=40`);
     if (!res.ok) throw new Error("Ошибка API: " + res.status);
     const data = await res.json();
-
-    if (!grid) return; // используем grid вместо recommendationsPopular
-    
-    grid.innerHTML = ""; // очищаем контейнер
-
+    if (!grid) return;
+    grid.innerHTML = "";
     data.forEach(franchise => {
       const poster = franchise.image?.optimized?.preview 
-                   ? `https://anilibria.top${franchise.image.optimized.preview}`
-                   : "https://via.placeholder.com/200x280?text=No+Image";
-
+        ? `https://anilibria.top${franchise.image.optimized.preview}`
+        : "https://via.placeholder.com/200x280?text=No+Image";
       const card = document.createElement("div");
       card.className = "card";
       card.innerHTML = `
@@ -186,11 +136,9 @@ async function loadReleases() {
           </div>
         </div>
       `;
-
       card.addEventListener('click', () => openFranchise(franchise.id));
       grid.appendChild(card);
     });
-
   } catch (e) {
     console.error("Ошибка загрузки франшиз:", e);
     if (grid) grid.textContent = "Ошибка загрузки франшиз";
@@ -204,168 +152,187 @@ async function loadHorizontalReleases() {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();
     const list = json.data || [];
-    
     renderHorizontalReleases(list);
   } catch (err) {
     console.error("Ошибка загрузки горизонтальных релизов:", err);
   }
 }
 
-
-// --- Рендер горизонтальных релизов ---
 function renderHorizontalReleases(list) {
   if (!releasesHorizontal) return;
-  
   releasesHorizontal.innerHTML = "";
-
-  if (!list.length) {
-    return;
-  }
-
+  if (!list.length) return;
   list.forEach(item => {
     const card = document.createElement("div");
     card.className = "horizontal-card";
-    
     const img = document.createElement("img");
-    img.src = item.poster?.preview
-      ? `https://anilibria.top${item.poster.preview}`
-      : "https://via.placeholder.com/300x400?text=No+Poster";
+    img.src = item.poster?.preview ? `https://anilibria.top${item.poster.preview}` : "https://via.placeholder.com/300x400?text=No+Poster";
     img.alt = item.name?.main || item.name?.english || "Аниме";
     img.loading = "lazy";
-
     const cardContent = document.createElement("div");
     cardContent.className = "horizontal-card-content";
-    
     const title = document.createElement("div");
     title.className = "horizontal-card-title";
     title.textContent = item.name?.main || item.name?.english || "Без названия";
-    
     const meta = document.createElement("div");
     meta.className = "horizontal-card-meta";
-    
     const year = document.createElement("span");
     year.textContent = item.year || "—";
-    
     const rating = document.createElement("span");
     rating.className = "card-rating";
     rating.innerHTML = `<i class="fas fa-star"></i> ${item.rating?.score || "—"}`;
-    
     meta.appendChild(year);
     meta.appendChild(rating);
-    
     cardContent.appendChild(title);
     cardContent.appendChild(meta);
-    
     card.appendChild(img);
     card.appendChild(cardContent);
     releasesHorizontal.appendChild(card);
-
     card.addEventListener('click', () => openAnimeDetail(item.id || item.alias));
   });
 }
 
-// --- Рендер сетки (франшизы) ---
 function renderGrid(list) {
+  if (!grid) return;
   grid.innerHTML = "";
-  empty.style.display = "none";
+  if (empty) { empty.style.display = "none"; empty.textContent = ""; }
 
-  if (!list.length) {
-    empty.style.display = "block";
-    empty.textContent = "Ничего не найдено.";
+  if (!list || !list.length) {
+    if (empty) {
+      empty.style.display = "block";
+      empty.textContent = "Ничего не найдено.";
+    }
     return;
   }
 
   list.forEach(item => {
     const card = document.createElement("div");
     card.className = "card";
-    
     const img = document.createElement("img");
-    img.src = item.poster?.preview
-      ? `https://anilibria.top${item.poster.preview}`
-      : "https://via.placeholder.com/300x400?text=No+Poster";
+    img.src = item.poster?.preview ? `https://anilibria.top${item.poster.preview}` : "https://via.placeholder.com/300x400?text=No+Poster";
     img.alt = item.name?.main || item.name?.english || "Аниме";
     img.loading = "lazy";
-
     const cardContent = document.createElement("div");
     cardContent.className = "card-content";
-    
     const title = document.createElement("div");
     title.className = "card-title";
     title.textContent = item.name?.main || item.name?.english || "Без названия";
-    
     const meta = document.createElement("div");
     meta.className = "card-meta";
-    
     const year = document.createElement("span");
     year.textContent = item.year || "—";
-    
     const rating = document.createElement("span");
     rating.className = "card-rating";
     rating.innerHTML = `<i class="fas fa-star"></i> ${item.rating?.score || "—"}`;
-    
     meta.appendChild(year);
     meta.appendChild(rating);
-    
     cardContent.appendChild(title);
     cardContent.appendChild(meta);
-    
     card.appendChild(img);
     card.appendChild(cardContent);
-    grid.appendChild(card);
-
     card.addEventListener('click', () => openAnimeDetail(item.id || item.alias));
+    grid.appendChild(card);
   });
 }
 
-// --- Поиск ---
+/* ----------------- Поиск ----------------- */
 async function searchAnime(query) {
+  query = (query || '').trim();
+
+  // если пустой запрос — показываем главную
   if (!query) {
-    loadReleases();
-    loadHorizontalReleases();
+    currentMode = 'main';
+    lastSearchResults = [];
+    lastSearchQuery = '';
+
+    showSearch();
+
+    const recommendations = document.querySelector('.recommendations');
+    if (recommendations) recommendations.style.display = 'block';
+
+    grid.style.display = 'grid';
+    grid.innerHTML = '';
+    await loadReleases();
+    await loadHorizontalReleases();
     return;
   }
-  
+
+  // Идём в режим поиска
+  currentMode = 'search';
+  lastSearchQuery = query;
+
+  const recommendations = document.querySelector('.recommendations');
+  if (recommendations) recommendations.style.display = 'none';
+
+  grid.style.display = 'grid';
+  grid.innerHTML = '';
+  empty.textContent = 'Поиск...';
+  empty.classList.add('loading');
+  empty.style.display = 'none';
+
   try {
-    empty.textContent = "Поиск...";
-    empty.classList.add('loading');
-    
     const url = `${API_BASE}/app/search/releases?query=${encodeURIComponent(query)}`;
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();
 
-    const list = json.map(item => item.release || item).filter(r => r);
-    renderGrid(list);
+    const list = (Array.isArray(json) ? json : (json.results || json.data || json.list || []) )
+                  .map(item => item.release || item)
+                  .filter(Boolean);
 
-    // Скрываем горизонтальные релизы при поиске
-    const recommendationSection = document.querySelector('.recommendation-section');
-    if (recommendationSection) {
-      recommendationSection.style.display = 'none';
+    lastSearchResults = list;
+
+    if (!list.length) {
+      grid.innerHTML = '';
+      empty.style.display = 'block';
+      empty.textContent = 'Ничего не найдено.';
+    } else {
+      animeDetail.style.display = "none"; // 🔹 прячем детальное меню
+      grid.style.display = "grid";        // 🔹 показываем сетку результатов
+      renderGrid(list);
     }
     
-    empty.style.display = list.length ? "none" : "block";
-    empty.textContent = list.length ? "" : "Ничего не найдено.";
-    empty.classList.remove('loading');
+
+    if (!list.length) {
+      grid.innerHTML = '';
+      empty.style.display = 'block';
+      empty.textContent = 'Ничего не найдено.';
+    } else {
+      renderGrid(list);
+    }
   } catch (err) {
     console.error("Ошибка поиска:", err);
-    empty.textContent = `Ошибка поиска: ${err.message}`;
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    empty.textContent = `Ошибка поиска: ${err.message || err}`;
+  } finally {
     empty.classList.remove('loading');
   }
 }
 
-// --- Детальная страница ---
+
+
+/* ----------------- Детальная страница ----------------- */
+// Замените существующую openAnimeDetail этой версией
 async function openAnimeDetail(idOrAlias) {
   try {
+    // сохраняем откуда пришли
+    lastViewBeforeDetail = currentMode || 'main';
+    currentMode = 'detail';
+
+    // Скрываем поиск при открытии карточки
+    hideSearch();
+
+    // скрываем список и рекомендации, показываем детальную страницу
     grid.style.display = "none";
-    
     const recommendations = document.querySelector(".recommendations");
     if (recommendations) recommendations.style.display = "none";
-    
+
     const recommendationSection = document.querySelector('.recommendation-section');
     if (recommendationSection) recommendationSection.style.display = 'none';
-    
+
     animeDetail.style.display = "block";
-    
+
     // Показываем скелетон загрузки
     detailPoster.src = "";
     detailTitle.textContent = "Загрузка...";
@@ -382,7 +349,7 @@ async function openAnimeDetail(idOrAlias) {
         <p>Загрузка данных...</p>
       </div>
     `;
-    
+
     const url = `${API_BASE}/anime/releases/${idOrAlias}`;
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -396,7 +363,7 @@ async function openAnimeDetail(idOrAlias) {
     detailStatus.textContent = data.status?.name || "—";
     detailEpisodes.textContent = `Эпизодов: ${data.episodes_total || "—"}`;
     detailRating.textContent = data.rating?.score || "—";
-    
+
     // Жанры
     if (data.genres && data.genres.length) {
       detailGenres.innerHTML = "";
@@ -406,7 +373,7 @@ async function openAnimeDetail(idOrAlias) {
         detailGenres.appendChild(genreSpan);
       });
     }
-    
+
     // Группировка серий по сезонам
     const seasons = {};
     if (data.episodes && data.episodes.length) {
@@ -443,7 +410,6 @@ async function openAnimeDetail(idOrAlias) {
       });
       episodeList.appendChild(episodeContainer);
     }
-    
 
     if (data.episodes?.[0]) {
       const firstBtn = episodeList.querySelector('.episode-btn');
@@ -456,7 +422,8 @@ async function openAnimeDetail(idOrAlias) {
   }
 }
 
-// --- Воспроизведение ---
+
+/* ----------------- Плеер ----------------- */
 function playEpisode(ep) {
   if (hlsInstance) {
     hlsInstance.destroy();
@@ -483,25 +450,35 @@ function playEpisode(ep) {
       <video id="video" playsinline></video>
 
       <div class="controls">
-        <button class="btn btn-play" title="Play/Pause"><i class="fas fa-play"></i></button>
-        <input class="seek" type="range" min="0" max="100" step="0.1" value="0" title="Перемотка">
-        <span class="time">00:00 / 00:00</span>
-        <input class="volume" type="range" min="0" max="1" step="0.01" value="1" title="Громкость">
-        <button class="btn btn-pip" title="Картинка в картинке"><i class="fas fa-clone"></i></button>
-        <div class="menu">
-          <button class="btn btn-settings" title="Настройки"><i class="fas fa-ellipsis-v"></i></button>
-          <div class="menu-panel">
-            <div class="menu-group">
-              <div class="menu-title">Качество</div>
-              <div class="menu-quality"></div>
+        <div class="controls-top">
+          <input class="seek" type="range" min="0" max="100" step="0.1" value="0" title="Перемотка">
+        </div>
+        
+        <div class="controls-bottom">
+          <div class="controls-left">
+            <button class="btn btn-play" title="Play/Pause"><i class="fas fa-play"></i></button>
+            <span class="time">00:00 / 00:00</span>
+            <input class="volume" type="range" min="0" max="1" step="0.01" value="1" title="Громкость">
+          </div>
+          
+          <div class="controls-right">
+            <button class="btn btn-pip" title="Картинка в картинке"><i class="fas fa-clone"></i></button>
+            <div class="menu">
+              <button class="btn btn-settings" title="Настройки"><i class="fas fa-ellipsis-v"></i></button>
+              <div class="menu-panel">
+                <div class="menu-group">
+                  <div class="menu-title">Качество</div>
+                  <div class="menu-quality"></div>
+                </div>
+                <div class="menu-group">
+                  <div class="menu-title">Скорость</div>
+                  <div class="menu-speed"></div>
+                </div>
+              </div>
             </div>
-            <div class="menu-group">
-              <div class="menu-title">Скорость</div>
-              <div class="menu-speed"></div>
-            </div>
+            <button class="btn btn-fullscreen" title="На весь экран"><i class="fas fa-expand"></i></button>
           </div>
         </div>
-        <button class="btn btn-fullscreen" title="На весь экран"><i class="fas fa-expand"></i></button>
       </div>
     </div>
   `;
@@ -520,6 +497,8 @@ function playEpisode(ep) {
   const wrapper = container.querySelector(".video-wrapper");
 
   let hideControlsTimeout;
+  let isSettingSource = false;
+  let lastClickTime = 0;
 
   function formatTime(sec) {
     sec = Math.max(sec || 0, 0);
@@ -538,17 +517,15 @@ function playEpisode(ep) {
   }
 
   function setSource(url, resumeTime=0, shouldPlay=true) {
+    isSettingSource = true;
     const rate = video.playbackRate;
     const vol = video.volume;
 
-    if (hlsInstance) {
-      hlsInstance.destroy();
-      hlsInstance = null;
-    }
+    if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
     video.pause();
     video.removeAttribute("src");
 
-    if (Hls.isSupported()) {
+    if (window.Hls && Hls.isSupported()) {
       hlsInstance = new Hls({ capLevelToPlayerSize: false });
       hlsInstance.loadSource(url);
       hlsInstance.attachMedia(video);
@@ -556,7 +533,10 @@ function playEpisode(ep) {
         if (resumeTime) video.currentTime = resumeTime;
         video.playbackRate = rate;
         video.volume = vol;
-        if (shouldPlay) video.play().catch(()=>{});
+        if (shouldPlay) {
+          video.play().catch(()=>{});
+        }
+        isSettingSource = false;
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = url;
@@ -564,7 +544,10 @@ function playEpisode(ep) {
         if (resumeTime) video.currentTime = resumeTime;
         video.playbackRate = rate;
         video.volume = vol;
-        if (shouldPlay) video.play().catch(()=>{});
+        if (shouldPlay) {
+          video.play().catch(()=>{});
+        }
+        isSettingSource = false;
       }, { once:true });
     } else {
       container.innerHTML = `
@@ -572,7 +555,27 @@ function playEpisode(ep) {
           <i class="fas fa-exclamation-triangle"></i>
           <p>Ваш браузер не поддерживает HLS</p>
         </div>`;
+      isSettingSource = false;
     }
+  }
+
+  function togglePlayPause() {
+    const now = Date.now();
+    if (now - lastClickTime < 300) return;
+    lastClickTime = now;
+    
+    if (video.paused) {
+      video.play().catch(()=>{});
+    } else {
+      video.pause();
+    }
+  }
+
+  function isFullscreen() {
+    return document.fullscreenElement || 
+           document.webkitFullscreenElement || 
+           document.mozFullScreenElement ||
+           document.msFullscreenElement;
   }
 
   // Качества
@@ -609,21 +612,22 @@ function playEpisode(ep) {
   // Первый запуск
   setSource(sources[0].url, 0, true);
 
-  // -------------------
-  // UI события
-  btnPlay.addEventListener("click", () => {
-    if (video.paused) video.play().catch(()=>{});
-    else video.pause();
+  // UI events
+  btnPlay.addEventListener("click", (e) => {
+    e.stopPropagation();
+    togglePlayPause();
   });
 
   video.addEventListener("play", () => {
     btnPlay.innerHTML = `<i class="fas fa-pause"></i>`;
-    if (document.fullscreenElement) showControlsTemporarily();
+    if (isFullscreen()) showControlsTemporarily();
   });
 
   video.addEventListener("pause", () => {
-    btnPlay.innerHTML = `<i class="fas fa-play"></i>`;
-    if (document.fullscreenElement) showControls();
+    if (!isSettingSource) {
+      btnPlay.innerHTML = `<i class="fas fa-play"></i>`;
+      if (isFullscreen()) showControls();
+    }
   });
 
   video.addEventListener("timeupdate", updateTimeUI);
@@ -637,92 +641,112 @@ function playEpisode(ep) {
 
   volume.addEventListener("input", () => video.volume = volume.value);
 
-  video.addEventListener("click", () => {
-    if (video.paused) video.play().catch(()=>{});
-    else video.pause();
+  // Обработчик клика на видео
+  video.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!isFullscreen()) {
+      togglePlayPause();
+    } else {
+      showControlsTemporarily();
+    }
   });
 
-  btnPip.addEventListener("click", async () => {
+  btnPip.addEventListener("click", async (e) => {
+    e.stopPropagation();
     try {
       if (document.pictureInPictureElement) await document.exitPictureInPicture();
       else if (document.pictureInPictureEnabled) await video.requestPictureInPicture();
     } catch(e){}
   });
 
-  btnFs.addEventListener("click", () => {
-    if (video.webkitEnterFullscreen) { 
-      // iPhone / iPad Safari
-      video.webkitEnterFullscreen();
-    } else if (video.requestFullscreen) {
-      // ПК + Android Chrome
-      video.requestFullscreen();
-    } else if (video.msRequestFullscreen) {
-      video.msRequestFullscreen();
-    }
+  btnFs.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+    else if (video.requestFullscreen) video.requestFullscreen();
+    else if (video.msRequestFullscreen) video.msRequestFullscreen && video.msRequestFullscreen();
   });
-  
-  
 
   btnSettings.addEventListener("click", e => {
     e.stopPropagation();
-    panel.classList.toggle("open");
+    panel.classList.toggle('open');
   });
-  document.addEventListener("click", () => panel.classList.remove("open"));
+  
+  document.addEventListener("click", (e) => {
+    if (!panel.contains(e.target) && e.target !== btnSettings) {
+      panel.classList.remove('open');
+    }
+  });
 
-  // 2× скорость при удержании краёв
+  // События полноэкранного режима
+  document.addEventListener('fullscreenchange', updateControlsBehavior);
+  document.addEventListener('webkitfullscreenchange', updateControlsBehavior);
+
+  function updateControlsBehavior() {
+    if (isFullscreen()) {
+      showControlsTemporarily();
+    } else {
+      wrapper.classList.add("show-controls");
+      clearTimeout(hideControlsTimeout);
+    }
+  }
+
+  // Двойная скорость при touch у краёв
   video.addEventListener("touchstart", (e) => {
     const rect = video.getBoundingClientRect();
     const x = e.touches[0].clientX - rect.left;
     if (x < rect.width*0.2 || x > rect.width*0.8) video.playbackRate = 2.0;
   });
+  
   video.addEventListener("touchend", () => {
     const active = sWrap.querySelector(".menu-btn.active");
     const val = active ? parseFloat(active.textContent) : 1;
     video.playbackRate = val || 1;
   });
 
-  // -------------------
-  // Контролы показываются/скрываются только в fullscreen
+  // Контролы
   function showControls() {
     wrapper.classList.add("show-controls");
     clearTimeout(hideControlsTimeout);
   }
-
+  
   function showControlsTemporarily() {
     wrapper.classList.add("show-controls");
     clearTimeout(hideControlsTimeout);
     hideControlsTimeout = setTimeout(() => {
-      // скрываем только если плеер в fullscreen
-      if (document.fullscreenElement || document.webkitFullscreenElement) {
+      if (isFullscreen()) {
         wrapper.classList.remove("show-controls");
       }
     }, 5000);
   }
+
+  wrapper.addEventListener("mousemove", () => {
+    if (isFullscreen()) {
+      showControlsTemporarily();
+    }
+  });
   
+  wrapper.addEventListener("click", (e) => {
+    if (isFullscreen()) {
+      showControlsTemporarily();
+    }
+  });
 
-  wrapper.addEventListener("mousemove", showControlsTemporarily);
-  wrapper.addEventListener("click", showControlsTemporarily);
-
-  // Панель видна по умолчанию
+  // по-умолчанию показываем контролы
   wrapper.classList.add("show-controls");
 }
+/* ----------------- Франшизы / рекомендации ----------------- */
 
-// --- Франшизы ---
 async function loadFranchises() {
   try {
     const res = await fetch(`${API_BASE}/anime/franchises/random?limit=4`);
     if (!res.ok) throw new Error("Ошибка API: " + res.status);
     const data = await res.json();
-
     if (!recommendationsPopular) return;
-    
     recommendationsPopular.innerHTML = "";
-
     data.forEach(franchise => {
       const poster = franchise.image?.optimized?.preview 
-                   ? `https://anilibria.top${franchise.image.optimized.preview}`
-                   : "https://via.placeholder.com/200x280?text=No+Image";
-
+        ? `https://anilibria.top${franchise.image.optimized.preview}`
+        : "https://via.placeholder.com/200x280?text=No+Image";
       const card = document.createElement("div");
       card.className = "card";
       card.innerHTML = `
@@ -738,7 +762,6 @@ async function loadFranchises() {
       card.addEventListener('click', () => openFranchise(franchise.id));
       recommendationsPopular.appendChild(card);
     });
-
   } catch (e) {
     console.error("Ошибка загрузки франшиз:", e);
   }
@@ -746,20 +769,18 @@ async function loadFranchises() {
 
 async function openFranchise(franchiseId) {
   try {
-    
     const url = `${API_BASE}/anime/franchises/${franchiseId}`;
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const franchise = await resp.json();
 
-    grid.style.display = "none";
-    
+    hideSearch();
+
+    if (grid) grid.style.display = "none";
     const recommendations = document.querySelector(".recommendations");
     if (recommendations) recommendations.style.display = "none";
-    
-    const recommendationSection = document.querySelector('.recommendation-section');
-    if (recommendationSection) recommendationSection.style.display = 'none';
-    
+    document.querySelectorAll('.recommendation-section').forEach(s => s.style.display = 'none');
+
     animeDetail.style.display = "block";
 
     const lastRelease = franchise.franchise_releases?.[franchise.franchise_releases.length - 1]?.release;
@@ -771,10 +792,7 @@ async function openFranchise(franchiseId) {
     detailEpisodes.textContent = `Релизов: ${franchise.total_releases}, Эпизодов: ${franchise.total_episodes}`;
     detailRating.textContent = "";
 
-    // Очищаем жанры
     detailGenres.innerHTML = "";
-    
-    // Создаем элемент для отображения годов
     const yearsSpan = document.createElement("span");
     yearsSpan.textContent = `Годы: ${franchise.first_year} - ${franchise.last_year || "..."}`;
     detailGenres.appendChild(yearsSpan);
@@ -789,7 +807,6 @@ async function openFranchise(franchiseId) {
     episodeList.innerHTML = "";
     franchise.franchise_releases.forEach(fr => {
       const release = fr.release;
-
       const seasonHeader = document.createElement("h4");
       seasonHeader.textContent = release.name?.main || "Без названия";
       seasonHeader.style.marginTop = "20px";
@@ -815,7 +832,6 @@ async function openFranchise(franchiseId) {
         noEp.style.color = "var(--text-secondary)";
         episodeContainer.appendChild(noEp);
       }
-
       episodeList.appendChild(episodeContainer);
     });
 
@@ -830,27 +846,64 @@ async function openFranchise(franchiseId) {
   }
 }
 
-// --- Назад ---
+/* Назад — полностью восстановить главную */
 function goBackToList() {
-  animeDetail.style.display = "none";
-  grid.style.display = "grid";
-  
-  const recommendations = document.querySelector(".recommendations");
-  if (recommendations) recommendations.style.display = "block";
-  
-  const recommendationSection = document.querySelector('.recommendation-section');
-  if (recommendationSection) recommendationSection.style.display = 'block';
-
   if (hlsInstance) {
-    hlsInstance.destroy();
-    hlsInstance = null;
+      hlsInstance.destroy();
+      hlsInstance = null;
   }
-  
-  // Прокрутка к началу страницы
+
+  animeDetail.style.display = "none";
+
+  if (lastViewBeforeDetail === 'search' && currentMode === 'detail' && lastSearchResults.length) {
+      // Пользователь пришёл из поиска → возвращаем результаты поиска
+      currentMode = 'search';
+      showSearch();
+      grid.style.display = "grid";
+      renderGrid(lastSearchResults);
+
+      // Скрываем рекомендации при поиске
+      const recommendations = document.querySelector(".recommendations");
+      if (recommendations) recommendations.style.display = "none";
+      const recommendationSection = document.querySelector(".recommendation-section");
+      if (recommendationSection) recommendationSection.style.display = "none";
+
+  } else {
+      // Пользователь пришёл с главной → просто показываем сетку и рекомендации без перезагрузки
+      currentMode = 'main';
+      showSearch();
+      grid.style.display = "grid";
+
+      const recommendations = document.querySelector(".recommendations");
+      if (recommendations) recommendations.style.display = "block";
+      const recommendationSection = document.querySelector(".recommendation-section");
+      if (recommendationSection) recommendationSection.style.display = "block";
+
+      // ❌ Не очищаем grid и не вызываем loadReleases() / loadHorizontalReleases()
+      // grid.innerHTML = '';
+      // loadReleases();
+      // loadHorizontalReleases();
+  }
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// --- Загрузка дополнительных рекомендаций ---
+
+
+
+
+function hideSearch() {
+  if (searchInput) searchInput.style.display = 'none';
+  if (searchBtn) searchBtn.style.display = 'none';
+}
+
+function showSearch() {
+  if (searchInput) searchInput.style.display = '';
+  if (searchBtn) searchBtn.style.display = '';
+}
+
+
+/* Top / Upcoming */
 async function loadTopAnime() {
   try {
     const url = `${API_BASE}/anime/catalog/top?limit=8`;
@@ -858,10 +911,8 @@ async function loadTopAnime() {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();
     const list = json.data || [];
-    
     const container = document.getElementById("recommendationsTop");
     if (!container) return;
-    
     container.innerHTML = "";
     renderRecommendationGrid(list, container);
   } catch (err) {
@@ -876,10 +927,8 @@ async function loadUpcomingAnime() {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();
     const list = json.data || [];
-    
     const container = document.getElementById("recommendationsUpcoming");
     if (!container) return;
-    
     container.innerHTML = "";
     renderRecommendationGrid(list, container);
   } catch (err) {
@@ -887,67 +936,98 @@ async function loadUpcomingAnime() {
   }
 }
 
-// --- Рендер рекомендаций ---
 function renderRecommendationGrid(list, container) {
-  if (!list.length) {
+  if (!list || !list.length) {
     container.innerHTML = "<p>Нет данных для отображения</p>";
     return;
   }
-
+  container.innerHTML = "";
   list.forEach(item => {
     const card = document.createElement("div");
     card.className = "card";
-    
     const img = document.createElement("img");
-    img.src = item.poster?.preview
-      ? `https://anilibria.top${item.poster.preview}`
-      : "https://via.placeholder.com/300x400?text=No+Poster";
+    img.src = item.poster?.preview ? `https://anilibria.top${item.poster.preview}` : "https://via.placeholder.com/300x400?text=No+Poster";
     img.alt = item.name?.main || item.name?.english || "Аниме";
     img.loading = "lazy";
-
     const cardContent = document.createElement("div");
     cardContent.className = "card-content";
-    
     const title = document.createElement("div");
     title.className = "card-title";
     title.textContent = item.name?.main || item.name?.english || "Без названия";
-    
     const meta = document.createElement("div");
     meta.className = "card-meta";
-    
     const year = document.createElement("span");
     year.textContent = item.year || "—";
-    
     const rating = document.createElement("span");
     rating.className = "card-rating";
     rating.innerHTML = `<i class="fas fa-star"></i> ${item.rating?.score || "—"}`;
-    
     meta.appendChild(year);
     meta.appendChild(rating);
-    
     cardContent.appendChild(title);
     cardContent.appendChild(meta);
-    
     card.appendChild(img);
     card.appendChild(cardContent);
     container.appendChild(card);
-
     card.addEventListener('click', () => openAnimeDetail(item.id || item.alias));
   });
 }
 
+/* Горизонтальный скролл (один раз) */
+function setupHorizontalScroll() {
+  const leftBtn = document.querySelector('.left-btn');
+  const rightBtn = document.querySelector('.right-btn');
+  const scrollContainer = document.querySelector('.horizontal-scroll');
+  if (leftBtn && rightBtn && scrollContainer) {
+    leftBtn.addEventListener('click', () => scrollContainer.scrollBy({ left: -300, behavior: 'smooth' }));
+    rightBtn.addEventListener('click', () => scrollContainer.scrollBy({ left: 300, behavior: 'smooth' }));
+  }
+}
+
+async function goHome() {
+  // Если был HLS-плеер — уничтожаем
+  if (hlsInstance) {
+      hlsInstance.destroy();
+      hlsInstance = null;
+  }
+
+  // Скрываем детальное меню
+  animeDetail.style.display = "none";
+
+  // Сбрасываем поиск
+  const searchInput = document.getElementById("searchInput");
+  if (searchInput) searchInput.value = "";
+  showSearch()
+  lastSearchResults = [];
+  lastSearchQuery = '';
+
+  // Показываем главную сетку
+  grid.style.display = "grid";
+  grid.innerHTML = ''; // очищаем старый контент
+
+  // Показываем рекомендации
+  const recommendations = document.querySelector(".recommendations");
+  if (recommendations) recommendations.style.display = "block";
+
+  const recommendationSections = document.querySelectorAll(".recommendation-section");
+  recommendationSections.forEach(section => section.style.display = "block");
+
+  // Загружаем главные релизы
+  await loadReleases();
+  await loadHorizontalReleases();
+
+  currentMode = 'main';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Привязываем клик на логотип
+logo.addEventListener('click', goHome);
 
 
-// Обновляем инициализацию для загрузки всех рекомендаций
+/* ---------- Запуск ---------- */
 window.addEventListener('DOMContentLoaded', () => {
-  loadReleases();
-  // loadHorizontalReleaases();
-  // loadFranchises();
-  // loadTopAnime();
-  // loadUpcomingAnime();
+  // запускаем домашнее состояние (подгрузит все секции)
+  showHome();
   setupEventListeners();
   setupScrollHeader();
   setupHorizontalScroll();
 });
-
-

@@ -790,11 +790,9 @@ footer {
 }
 
 .video-wrapper video {
-  display: block;
-  width: 100% !important;
-  height: auto !important;
+  width: 100%;
+  height: auto;
   max-height: 80vh;
-  background: #000;
   object-fit: contain;
 }
 /* Для маленьких экранов */
@@ -907,5 +905,118 @@ footer {
   }
   .controls .volume {
     width: 70px;
+  }
+}
+
+/* Новая структура контролов */
+.controls-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+}
+
+.controls-top .seek {
+  height: 100%;
+  background: var(--primary);
+  width: 0%;
+  transition: width 0.2s;
+}
+
+.controls-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: linear-gradient(to top, rgba(20,20,20,0.9), rgba(20,20,20,0));
+  box-sizing: border-box;
+}
+
+.controls-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.controls-left .btn {
+  font-size: 18px;
+  color: #fff;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.controls-left .time {
+  color: #ddd;
+  font-variant-numeric: tabular-nums;
+  min-width: 60px;
+  text-align: left;
+}
+
+.controls-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.controls-right .btn {
+  font-size: 16px;
+  color: #fff;
+  background: rgba(0,0,0,0.5);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.controls-right .btn:hover {
+  background: var(--primary);
+}
+/* Мобильная адаптация */
+@media (max-width: 768px) {
+  .controls-bottom {
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px 10px;
+  }
+  
+  .controls-left, .controls-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .controls-right .btn {
+    padding: 5px 6px;
+    font-size: 14px;
+  }
+  
+  .controls-left .time {
+    font-size: 12px;
+  }
+}
+
+/* Для очень маленьких экранов */
+@media (max-width: 480px) {
+  .controls-left {
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  
+  .controls .btn {
+    font-size: 14px;
+    padding: 6px;
+  }
+  
+  .time {
+    font-size: 11px;
+    min-width: 70px;
   }
 }
