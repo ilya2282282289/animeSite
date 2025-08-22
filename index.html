@@ -27,13 +27,6 @@
       <div id="grid" class="grid"></div>
       <p id="empty" class="empty"></p>
 
-      <!-- Кнопка "Больше франшиз" -->
-      <!-- <div style="text-align:center; margin:20px 0;">
-        <button id="moreFranchisesBtn" class="more-franchises-btn">
-          <i class="fas fa-arrow-down"></i> Больше франшиз
-        </button>
-      </div> -->
-
       <!-- Детальная страница аниме -->
       <div id="animeDetail" class="anime-detail" style="display:none;">
         <button id="backBtn" class="back-btn"><i class="fas fa-arrow-left"></i> Назад к списку</button>
@@ -67,21 +60,39 @@
           <div id="episodeList" class="episode-list"></div>
         </div>
 
+        <!-- 🎬 Новый плеер -->
         <div id="player" class="player">
-          <div class="player-placeholder">
-            <i class="fas fa-play-circle"></i>
-            <p>Выберите серию для просмотра</p>
-          </div>
-          <!-- overlay для контролов -->
-          <div class="player-overlay" id="playerOverlay">
-            <div class="player-controls">
-              <button id="settingsBtn"><i class="fas fa-ellipsis-v"></i></button>
-              <div class="settings-menu" id="settingsMenu">
-                <p>Качество</p>
-                <button class="quality-btn" data-quality="1080">1080p</button>
-                <button class="quality-btn" data-quality="720">720p</button>
-                <button class="quality-btn" data-quality="480">480p</button>
+          <div class="video-wrapper">
+            <video id="video" src=""></video>
+
+            <!-- верхняя полоска прогресса -->
+            <div class="controls-top">
+              <div class="seek" id="seekBar"></div>
+            </div>
+
+            <!-- нижняя панель -->
+            <div class="controls-bottom">
+              <div class="controls-left">
+                <button class="btn" id="playPauseBtn"><i class="fas fa-play"></i></button>
+                <span class="time" id="currentTime">0:00</span>
+                <span class="time" id="duration">0:00</span>
               </div>
+
+              <div class="controls-right">
+                <input type="range" class="volume" id="volume" min="0" max="1" step="0.01">
+                <button class="btn" id="settingsBtn"><i class="fas fa-cog"></i></button>
+                <button class="btn" id="fullscreenBtn"><i class="fas fa-expand"></i></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- меню настроек -->
+          <div class="menu-panel" id="settingsMenu">
+            <div class="menu-group">
+              <div class="menu-title">Качество</div>
+              <button class="menu-btn" data-quality="1080">1080p</button>
+              <button class="menu-btn" data-quality="720">720p</button>
+              <button class="menu-btn" data-quality="480">480p</button>
             </div>
           </div>
         </div>
@@ -89,7 +100,6 @@
 
       <!-- Рекомендации -->
       <div class="recommendations">
-
         <div class="recommendation-section">
           <div class="section-header">
             <h2><i class="fas fa-bell"></i> Новые релизы</h2>
@@ -99,11 +109,6 @@
             </div>
           </div>
           <div id="releasesHorizontal" class="horizontal-scroll"></div>
-        </div>
-        
-        <div class="recommendation-section">
-          <h3><i class="fas fa-crown"></i> Популярные франшизы</h3>
-          <div id="recommendationsPopular" class="recommendation-grid"></div>
         </div>
         
         <div class="recommendation-section">
@@ -121,7 +126,7 @@
 
   <footer>
     <div class="footer-content">
-      <p>&copy; 2023 АниЛибрия — Лучшая платформа для просмотра аниме</p>
+      <p>&copy;AnimeLook — Лучшая платформа для просмотра аниме</p>
     </div>
   </footer>
 

@@ -83,8 +83,8 @@ function showHome() {
   loadReleases();
   loadHorizontalReleases();
   // loadFranchises();
-  loadTopAnime();
-  loadUpcomingAnime();
+  // loadTopAnime();
+  // loadUpcomingAnime();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -458,10 +458,10 @@ function playEpisode(ep) {
           <div class="controls-left">
             <button class="btn btn-play" title="Play/Pause"><i class="fas fa-play"></i></button>
             <span class="time">00:00 / 00:00</span>
-            <input class="volume" type="range" min="0" max="1" step="0.01" value="1" title="Громкость">
           </div>
           
           <div class="controls-right">
+            <input class="volume" type="range" min="0" max="1" step="0.01" value="1" title="Громкость">
             <button class="btn btn-pip" title="Картинка в картинке"><i class="fas fa-clone"></i></button>
             <div class="menu">
               <button class="btn btn-settings" title="Настройки"><i class="fas fa-ellipsis-v"></i></button>
@@ -514,6 +514,12 @@ function playEpisode(ep) {
     const dur = video.duration || 0;
     timeLabel.textContent = `${formatTime(cur)} / ${dur ? formatTime(dur) : "00:00"}`;
     if (dur) seek.value = (cur / dur) * 100;
+    updateSeekBackground();
+  }
+
+  function updateSeekBackground() {
+    const val = seek.value;
+    seek.style.background = `linear-gradient(to right, #005ac7 0%, #8a0000 ${val}%, rgba(255,255,255,0.2) ${val}%, rgba(255,255,255,0.2) 100%)`;
   }
 
   function setSource(url, resumeTime=0, shouldPlay=true) {
@@ -533,10 +539,9 @@ function playEpisode(ep) {
         if (resumeTime) video.currentTime = resumeTime;
         video.playbackRate = rate;
         video.volume = vol;
-        if (shouldPlay) {
-          video.play().catch(()=>{});
-        }
+        if (shouldPlay) video.play().catch(()=>{});
         isSettingSource = false;
+        updateSeekBackground();
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = url;
@@ -544,10 +549,9 @@ function playEpisode(ep) {
         if (resumeTime) video.currentTime = resumeTime;
         video.playbackRate = rate;
         video.volume = vol;
-        if (shouldPlay) {
-          video.play().catch(()=>{});
-        }
+        if (shouldPlay) video.play().catch(()=>{});
         isSettingSource = false;
+        updateSeekBackground();
       }, { once:true });
     } else {
       container.innerHTML = `
@@ -637,6 +641,7 @@ function playEpisode(ep) {
   seek.addEventListener("input", () => {
     if (!video.duration) return;
     video.currentTime = (seek.value / 100) * video.duration;
+    updateSeekBackground();
   });
 
   volume.addEventListener("input", () => video.volume = volume.value);
@@ -734,6 +739,7 @@ function playEpisode(ep) {
   // по-умолчанию показываем контролы
   wrapper.classList.add("show-controls");
 }
+
 /* ----------------- Франшизы / рекомендации ----------------- */
 
 async function loadFranchises() {
