@@ -520,6 +520,8 @@ function playEpisode(ep) {
   function updateSeekBackground() {
     const val = seek.value;
     seek.style.background = `linear-gradient(to right, #005ac7 0%, #8a0000 ${val}%, rgba(255,255,255,0.2) ${val}%, rgba(255,255,255,0.2) 100%)`;
+    const sound = volume.value * 100;
+    volume.style.background = `linear-gradient(to right, #005ac7 0%, #8a0000 ${sound}%, rgba(255,255,255,0.2) ${sound}%, rgba(255,255,255,0.2) 100%)`;
   }
 
   function setSource(url, resumeTime=0, shouldPlay=true) {
@@ -644,7 +646,10 @@ function playEpisode(ep) {
     updateSeekBackground();
   });
 
-  volume.addEventListener("input", () => video.volume = volume.value);
+  volume.addEventListener("input", () => {
+    video.volume = volume.value; 
+    updateSeekBackground(); 
+  });
 
   // Обработчик клика на видео
   video.addEventListener("click", (e) => {

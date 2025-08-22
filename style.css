@@ -819,7 +819,7 @@ footer {
   top: 0;
   left: 0;
   height: 100%;
-  background: #1db954;
+  background: #8a0000;
   width: 0%;
   transition: width 0.1s ease;
 }
@@ -840,7 +840,7 @@ footer {
   right: -6px;
   width: 12px;
   height: 12px;
-  background: #1db954;
+  background: #8a0000;
   border-radius: 50%;
   transform: translateY(-50%);
   opacity: 0;
@@ -907,7 +907,7 @@ footer {
 }
 
 .controls .btn:hover {
-  background: #1db954;
+  background: #8a0000;
 }
 
 .controls .seek {
@@ -1032,7 +1032,7 @@ footer {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #1db954; /* цвет кнопки */
+  background: #8a0000; /* цвет кнопки */
   cursor: pointer;
   box-shadow: 0 0 2px rgba(0,0,0,0.5);
 }
@@ -1046,7 +1046,7 @@ footer {
   color: transparent;
 }
 .controls-top .seek::-ms-fill-lower {
-  background: #1db954;
+  background: #8a0000;
   border-radius: 3px;
 }
 .controls-top .seek::-ms-fill-upper {
@@ -1057,7 +1057,7 @@ footer {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #1db954;
+  background: #8a0000;
   cursor: pointer;
   box-shadow: 0 0 2px rgba(0,0,0,0.5);
 }
@@ -1104,7 +1104,7 @@ footer {
 
 .controls-left .btn:hover,
 .controls-right .btn:hover {
-  background: #1db954;
+  background: #8a0000;
 }
 
 .controls-left .time {
@@ -1114,8 +1114,78 @@ footer {
   text-align: left;
 }
 
+.volume{
+  -webkit-appearance: none;
+  border-radius: 8px;;
+}
+
+.volume::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(153, 0, 0, 0.2); /* фон полосы */
+}
+
+.volume::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #8a0000; /* цвет кнопки, которую перетаскиваем */
+  cursor: pointer;
+  box-shadow: 0 0 2px rgba(0,0,0,0.5);
+  margin-top: -4px; /* чтобы центрировалось по полоске */
+}
+
+/* Для Firefox */
+.volume::-moz-range-track {
+  background: rgba(255,255,255,0.2); /* фон полосы */
+  height: 6px;
+  border-radius: 3px;
+}
+
+.volume::-moz-range-progress {
+  background: #b91d1d; /* цвет заполненной части */
+  height: 6px;
+  border-radius: 3px;
+}
+
+.volume::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #8a0000; /* цвет кнопки */
+  cursor: pointer;
+  box-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+
+/* Для Edge/IE */
+.volume::-ms-track {
+  height: 6px;
+  border-radius: 3px;
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+}
+.volume::-ms-fill-lower {
+  background: #8a0000;
+  border-radius: 3px;
+}
+.volume::-ms-fill-upper {
+  background: rgba(255,255,255,0.2);
+  border-radius: 3px;
+}
+.volume::-ms-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #8a0000;
+  cursor: pointer;
+  box-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+
 .controls-right .volume {
   width: 80px;
+  
 }
 
 
